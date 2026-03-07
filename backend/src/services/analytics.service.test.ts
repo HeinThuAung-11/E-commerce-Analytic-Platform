@@ -1,9 +1,12 @@
 import { OrderStatus, Prisma } from "@prisma/client";
 
 import {
+  getCategoryDistribution,
+  getOrderTrend,
   getOrders,
   getOverview,
   getProducts,
+  getRevenueByStatus,
   getRevenue,
   getTopProducts,
   invalidateAnalyticsCache,
@@ -21,7 +24,11 @@ jest.mock("../utils/cache-keys", () => ({
   analyticsCacheKeys: {
     overview: "analytics:overview",
     revenue: (range: string) => `analytics:revenue:${range}`,
-    topProducts: "analytics:top-products",
+    topProducts: (range: string) => `analytics:top-products:${range}`,
+    orderTrend: (range: string) => `analytics:order-trend:${range}`,
+    orderStatusMix: (range: string) => `analytics:order-status-mix:${range}`,
+    revenueByStatus: (range: string) => `analytics:revenue-by-status:${range}`,
+    categoryDistribution: (range: string) => `analytics:category-distribution:${range}`,
   },
   invalidateAnalyticsCacheKeys: jest.fn(),
 }));
@@ -86,7 +93,7 @@ describe("analytics.service", () => {
   });
 
   it("maps top products to string revenue values", async () => {
-    mockedOrderRepository.getTopProductsBySales.mockResolvedValue([
+    mockedOrderRepository.getTopProductsBySalesSince.mockResolvedValue([
       {
         productId: "product-1",
         productName: "Keyboard",
@@ -96,7 +103,7 @@ describe("analytics.service", () => {
       },
     ]);
 
-    const result = await getTopProducts();
+    const result = await getTopProducts("30d");
 
     expect(result).toEqual([
       {
@@ -108,7 +115,7 @@ describe("analytics.service", () => {
       },
     ]);
     expect(mockedRedisUtils.setCacheValue).toHaveBeenCalledWith(
-      "analytics:top-products",
+      "analytics:top-products:30d",
       result,
       60,
     );
@@ -183,40 +190,74 @@ describe("analytics.service", () => {
   });
 
   it("returns products with price and timestamps transformed", async () => {
-    mockedProductRepository.findAllProducts.mockResolvedValue([
-      {
-        id: "product-1",
-        name: "Mouse",
-        sku: "SKU-000001",
-        category: "Electronics",
-        price: new Prisma.Decimal("49.99"),
-        stock: 120,
-        deletedAt: null,
-        createdAt: new Date("2026-03-01T10:00:00.000Z"),
-        updatedAt: new Date("2026-03-02T10:00:00.000Z"),
-      },
-    ]);
+    mockedProductRepository.findPaginatedProducts.mockResolvedValue({
+      items: [
+        {
+          id: "product-1",
+          name: "Mouse",
+          sku: "SKU-000001",
+          category: "Electronics",
+          price: new Prisma.Decimal("49.99"),
+          stock: 120,
+          deletedAt: null,
+          createdAt: new Date("2026-03-01T10:00:00.000Z"),
+          updatedAt: new Date("2026-03-02T10:00:00.000Z"),
+        },
+      ],
+      total: 1,
+    });
 
     const result = await getProducts();
 
-    expect(result).toEqual([
-      {
-        id: "product-1",
-        name: "Mouse",
-        sku: "SKU-000001",
-        category: "Electronics",
-        price: "49.99",
-        stock: 120,
-        createdAt: "2026-03-01T10:00:00.000Z",
-        updatedAt: "2026-03-02T10:00:00.000Z",
+    expect(result).toEqual({
+      items: [
+        {
+          id: "product-1",
+          name: "Mouse",
+          sku: "SKU-000001",
+          category: "Electronics",
+          price: "49.99",
+          stock: 120,
+          createdAt: "2026-03-01T10:00:00.000Z",
+          updatedAt: "2026-03-02T10:00:00.000Z",
+        },
+      ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
       },
-    ]);
+    });
   });
 
   it("delegates cache invalidation to cache utility", async () => {
     await invalidateAnalyticsCache();
 
     expect(mockedCacheKeys.invalidateAnalyticsCacheKeys).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps order trend values from repository", async () => {
+    mockedOrderRepository.getOrderTrendSince.mockResolvedValue([
+      {
+        date: "2026-03-01T00:00:00.000Z",
+        orderCount: 15,
+      },
+    ]);
+
+    const result = await getOrderTrend("30d");
+
+    expect(result).toEqual([
+      {
+        date: "2026-03-01T00:00:00.000Z",
+        orderCount: 15,
+      },
+    ]);
+    expect(mockedRedisUtils.setCacheValue).toHaveBeenCalledWith(
+      "analytics:order-trend:30d",
+      result,
+      60,
+    );
   });
 
   it("caches revenue payload by selected range", async () => {
@@ -228,6 +269,54 @@ describe("analytics.service", () => {
     expect(result.revenue).toBe("321.45");
     expect(mockedRedisUtils.setCacheValue).toHaveBeenCalledWith(
       "analytics:revenue:30d",
+      result,
+      60,
+    );
+  });
+
+  it("maps revenue by status values to strings", async () => {
+    mockedOrderRepository.getRevenueByStatusSince.mockResolvedValue([
+      {
+        status: OrderStatus.COMPLETED,
+        revenue: new Prisma.Decimal("1500.25"),
+        orders: 8,
+      },
+    ]);
+
+    const result = await getRevenueByStatus("30d");
+
+    expect(result).toEqual([
+      {
+        status: "COMPLETED",
+        revenue: "1500.25",
+        orders: 8,
+      },
+    ]);
+    expect(mockedRedisUtils.setCacheValue).toHaveBeenCalledWith(
+      "analytics:revenue-by-status:30d",
+      result,
+      60,
+    );
+  });
+
+  it("returns category distribution values", async () => {
+    mockedOrderRepository.getCategoryDistributionSince.mockResolvedValue([
+      {
+        category: "Electronics",
+        count: 42,
+      },
+    ]);
+
+    const result = await getCategoryDistribution("30d");
+
+    expect(result).toEqual([
+      {
+        category: "Electronics",
+        count: 42,
+      },
+    ]);
+    expect(mockedRedisUtils.setCacheValue).toHaveBeenCalledWith(
+      "analytics:category-distribution:30d",
       result,
       60,
     );

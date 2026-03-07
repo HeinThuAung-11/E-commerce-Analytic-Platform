@@ -240,6 +240,55 @@ export const openApiSpec = {
         },
       },
     },
+    "/analytics/order-trend": {
+      get: {
+        summary: "Get order trend by range",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "range",
+            required: true,
+            schema: {
+              type: "string",
+              enum: ["7d", "30d", "90d"],
+            },
+          },
+        ],
+        responses: {
+          "200": { description: "Order trend fetched" },
+        },
+      },
+    },
+    "/analytics/revenue-by-status": {
+      get: {
+        summary: "Get revenue grouped by order status",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "range",
+            required: true,
+            schema: {
+              type: "string",
+              enum: ["7d", "30d", "90d"],
+            },
+          },
+        ],
+        responses: {
+          "200": { description: "Revenue by status fetched" },
+        },
+      },
+    },
+    "/analytics/category-distribution": {
+      get: {
+        summary: "Get product category distribution",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "Category distribution fetched" },
+        },
+      },
+    },
     "/orders": {
       get: {
         summary: "Get paginated orders",
@@ -263,8 +312,20 @@ export const openApiSpec = {
     },
     "/products": {
       get: {
-        summary: "Get products list",
+        summary: "Get paginated products list",
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: "query",
+            name: "page",
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            in: "query",
+            name: "limit",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          },
+        ],
         responses: {
           "200": { description: "Products fetched" },
         },

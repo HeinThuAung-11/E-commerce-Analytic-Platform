@@ -1,7 +1,11 @@
 import { Router } from "express";
 
 import {
+  getCategoryDistributionHandler,
+  getOrderStatusMixHandler,
+  getOrderTrendHandler,
   getOverviewHandler,
+  getRevenueByStatusHandler,
   getRevenueHandler,
   getTopProductsHandler,
 } from "../controllers/analytics.controller";
@@ -9,7 +13,7 @@ import { analyticsRateLimit } from "../middleware/analytics-rate-limit";
 import { authenticateJWT } from "../middleware/authenticate-jwt";
 import { requireRole } from "../middleware/require-role";
 import { validate } from "../middleware/validate";
-import { revenueQuerySchema } from "../types/analytics";
+import { optionalRevenueQuerySchema, revenueQuerySchema } from "../types/analytics";
 import { asyncHandler } from "../utils/async-handler";
 
 const analyticsRouter = Router();
@@ -29,7 +33,32 @@ analyticsRouter.get(
 
 analyticsRouter.get(
   "/top-products",
+  validate(optionalRevenueQuerySchema),
   asyncHandler(getTopProductsHandler),
+);
+
+analyticsRouter.get(
+  "/order-trend",
+  validate(revenueQuerySchema),
+  asyncHandler(getOrderTrendHandler),
+);
+
+analyticsRouter.get(
+  "/revenue-by-status",
+  validate(revenueQuerySchema),
+  asyncHandler(getRevenueByStatusHandler),
+);
+
+analyticsRouter.get(
+  "/category-distribution",
+  validate(optionalRevenueQuerySchema),
+  asyncHandler(getCategoryDistributionHandler),
+);
+
+analyticsRouter.get(
+  "/order-status-mix",
+  validate(revenueQuerySchema),
+  asyncHandler(getOrderStatusMixHandler),
 );
 
 export { analyticsRouter };

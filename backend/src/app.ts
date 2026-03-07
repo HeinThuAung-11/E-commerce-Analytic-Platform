@@ -1,15 +1,31 @@
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import express from "express";
 import morgan from "morgan";
 
 import { openApiSpec } from "./config/openapi";
+import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
 import { router } from "./routes";
 
 const app = express();
+const allowedOrigins = new Set([env.frontendUrl, "http://localhost:5173", "http://127.0.0.1:5173"]);
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origin not allowed by CORS"));
+    },
+    credentials: true,
+  }),
+);
 app.use(
   morgan(":method :url :status :response-time ms", {
     skip: (_request, response) => response.statusCode >= 500,

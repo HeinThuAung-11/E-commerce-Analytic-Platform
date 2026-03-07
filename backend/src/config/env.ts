@@ -1,8 +1,10 @@
+import "dotenv/config";
 import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
+  FRONTEND_URL: z.string().url().default("http://localhost:5173"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
   ACCESS_TOKEN_SECRET: z.string().min(32, "ACCESS_TOKEN_SECRET must be at least 32 characters"),
@@ -22,6 +24,7 @@ if (!parsed.success) {
 export const env = {
   nodeEnv: parsed.data.NODE_ENV,
   port: parsed.data.PORT,
+  frontendUrl: parsed.data.FRONTEND_URL,
   databaseUrl: parsed.data.DATABASE_URL,
   redisUrl: parsed.data.REDIS_URL,
   accessTokenSecret: parsed.data.ACCESS_TOKEN_SECRET,

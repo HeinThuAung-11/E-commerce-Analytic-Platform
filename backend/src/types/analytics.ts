@@ -14,9 +14,16 @@ export const revenueQuerySchema = z.object({
   }),
 });
 
+export const optionalRevenueQuerySchema = z.object({
+  query: z.object({
+    range: z.enum(["7d", "30d", "90d"]).optional(),
+  }),
+});
+
 export const ordersQuerySchema = z.object({
   query: z.object({
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
+    range: z.enum(["7d", "30d", "90d"]).optional(),
   }),
 });
