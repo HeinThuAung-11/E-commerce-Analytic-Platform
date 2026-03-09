@@ -1,11 +1,12 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
-import morgan from "morgan";
 
 import { openApiSpec } from "./config/openapi";
 import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
+import { requestLogger } from "./middleware/request-logger";
+import { attachRequestId } from "./middleware/request-id";
 import { router } from "./routes";
 
 const app = express();
@@ -13,6 +14,7 @@ const allowedOrigins = new Set([env.frontendUrl, "http://localhost:5173", "http:
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(attachRequestId);
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -26,11 +28,7 @@ app.use(
     credentials: true,
   }),
 );
-app.use(
-  morgan(":method :url :status :response-time ms", {
-    skip: (_request, response) => response.statusCode >= 500,
-  }),
-);
+app.use(requestLogger);
 app.get("/openapi.json", (_request, response) => {
   response.status(200).json(openApiSpec);
 });

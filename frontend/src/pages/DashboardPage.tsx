@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useDashboardData } from "../features/analytics/use-dashboard-data";
 import { DashboardHeader } from "../features/analytics/components/DashboardHeader";
+import { DashboardFilters } from "../features/analytics/components/DashboardFilters";
 import { MetricCard } from "../features/analytics/components/MetricCard";
 import { RevenueRangeSelector } from "../features/analytics/components/RevenueRangeSelector";
 import { RevenueComparisonChart } from "../features/analytics/components/RevenueComparisonChart";
@@ -16,14 +17,31 @@ import { ProductsListPanel } from "../features/analytics/components/ProductsList
 import { formatCurrency, formatDateTime } from "../features/analytics/formatters";
 import { useAuth } from "../features/auth/auth-context";
 import { downloadCsv } from "../utils/csv";
+import type { RevenueRange } from "../features/analytics/analytics.service";
+
+function parseRange(value: string | null): RevenueRange {
+  if (value === "7d" || value === "90d") {
+    return value;
+  }
+
+  return "30d";
+}
+
+function getEmailDomain(email: string): string {
+  const parts = email.split("@");
+  return parts.length === 2 ? parts[1] : "unknown";
+}
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const selectedRange = parseRange(searchParams.get("range"));
+  const selectedStatus = searchParams.get("status") ?? "ALL";
+  const selectedCategory = searchParams.get("category") ?? "ALL";
+  const selectedCustomerDomain = searchParams.get("customer") ?? "ALL";
   const {
-    selectedRange,
-    setSelectedRange,
     revenueRanges,
     isLoading,
     errorMessage,
@@ -38,7 +56,50 @@ export function DashboardPage() {
     lastUpdatedAt,
     apiVersionMismatch,
     revenueByRange,
-  } = useDashboardData();
+  } = useDashboardData(selectedRange);
+
+  const statusOptions = ["ALL", ...new Set(orderStatusMix.map((item) => item.status))];
+  const categoryOptions = ["ALL", ...new Set(products.map((item) => item.category))];
+  const customerOptions = [
+    "ALL",
+    ...new Set(orders.map((item) => getEmailDomain(item.customer.email))),
+  ];
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesStatus = selectedStatus === "ALL" || order.status === selectedStatus;
+    const matchesCustomer =
+      selectedCustomerDomain === "ALL" ||
+      getEmailDomain(order.customer.email) === selectedCustomerDomain;
+    return matchesStatus && matchesCustomer;
+  });
+
+  const filteredTopProducts = topProducts.filter(
+    (item) => selectedCategory === "ALL" || item.category === selectedCategory,
+  );
+  const filteredProducts = products.filter(
+    (item) => selectedCategory === "ALL" || item.category === selectedCategory,
+  );
+  const filteredCategoryDistribution = categoryDistribution.filter(
+    (item) => selectedCategory === "ALL" || item.category === selectedCategory,
+  );
+  const filteredOrderStatusMix = orderStatusMix.filter(
+    (item) => selectedStatus === "ALL" || item.status === selectedStatus,
+  );
+  const filteredRevenueByStatus = revenueByStatus.filter(
+    (item) => selectedStatus === "ALL" || item.status === selectedStatus,
+  );
+
+  function updateQueryParam(key: string, value: string, fallback: string): void {
+    const next = new URLSearchParams(searchParams);
+
+    if (value === fallback) {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+
+    setSearchParams(next, { replace: true });
+  }
 
   async function handleLogout(): Promise<void> {
     setIsLoggingOut(true);
@@ -47,7 +108,7 @@ export function DashboardPage() {
   }
 
   function handleExportTopProducts(): void {
-    const rows = topProducts.map((item) => [
+    const rows = filteredTopProducts.map((item) => [
       item.productId,
       item.productName,
       item.category,
@@ -62,7 +123,7 @@ export function DashboardPage() {
   }
 
   function handleExportOrders(): void {
-    const rows = orders.map((order) => [
+    const rows = filteredOrders.map((order) => [
       order.id,
       order.customer.name,
       order.customer.email,
@@ -88,7 +149,18 @@ export function DashboardPage() {
         <RevenueRangeSelector
           ranges={revenueRanges}
           selectedRange={selectedRange}
-          onSelect={setSelectedRange}
+          onSelect={(range) => updateQueryParam("range", range, "30d")}
+        />
+        <DashboardFilters
+          status={selectedStatus}
+          category={selectedCategory}
+          customer={selectedCustomerDomain}
+          statusOptions={statusOptions}
+          categoryOptions={categoryOptions}
+          customerOptions={customerOptions}
+          onStatusChange={(value) => updateQueryParam("status", value, "ALL")}
+          onCategoryChange={(value) => updateQueryParam("category", value, "ALL")}
+          onCustomerChange={(value) => updateQueryParam("customer", value, "ALL")}
         />
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -139,15 +211,15 @@ export function DashboardPage() {
             isLoading={isLoading}
           />
           <TopProductsChart
-            items={topProducts}
+            items={filteredTopProducts}
             isLoading={isLoading}
             onExport={handleExportTopProducts}
           />
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
-          <OrderStatusChart items={orderStatusMix} isLoading={isLoading} />
-          <ProductCategoryChart items={categoryDistribution} isLoading={isLoading} />
+          <OrderStatusChart items={filteredOrderStatusMix} isLoading={isLoading} />
+          <ProductCategoryChart items={filteredCategoryDistribution} isLoading={isLoading} />
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
@@ -156,16 +228,16 @@ export function DashboardPage() {
             selectedRange={selectedRange}
             isLoading={isLoading}
           />
-          <RevenueByStatusChart items={revenueByStatus} isLoading={isLoading} />
+          <RevenueByStatusChart items={filteredRevenueByStatus} isLoading={isLoading} />
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
           <RecentOrdersTable
-            orders={orders}
+            orders={filteredOrders}
             isLoading={isLoading}
             onExport={handleExportOrders}
           />
-          <ProductsListPanel products={products} isLoading={isLoading} />
+          <ProductsListPanel products={filteredProducts} isLoading={isLoading} />
         </div>
       </section>
     </main>

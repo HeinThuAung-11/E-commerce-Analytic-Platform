@@ -64,6 +64,7 @@ describe("auth.service", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    mockedRefreshTokenRepository.revokeAllRefreshTokensByUserId.mockResolvedValue(1);
   });
 
   it("forces register role to ANALYST", async () => {
@@ -182,5 +183,28 @@ describe("auth.service", () => {
       errorCode: "AUTH_006",
     });
     expect(mockedRefreshTokenRepository.revokeRefreshTokenById).toHaveBeenCalledWith("token-expired");
+  });
+
+  it("detects refresh token reuse and revokes all user sessions", async () => {
+    mockedJwtUtils.verifyRefreshToken.mockReturnValue({
+      sub: "user-1",
+      tokenId: "token-revoked",
+    });
+    mockedRefreshTokenRepository.findRefreshTokenByToken.mockResolvedValue({
+      id: "token-revoked",
+      userId: "user-1",
+      token: "reused-refresh-token",
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      revokedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await expect(refresh("reused-refresh-token")).rejects.toMatchObject({
+      statusCode: 401,
+      errorCode: "AUTH_005",
+    });
+
+    expect(mockedRefreshTokenRepository.revokeAllRefreshTokensByUserId).toHaveBeenCalledWith("user-1");
   });
 });

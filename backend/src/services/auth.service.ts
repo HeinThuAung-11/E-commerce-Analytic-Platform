@@ -7,6 +7,7 @@ import {
   createRefreshToken,
   findRefreshTokenByToken,
   rotateRefreshToken,
+  revokeAllRefreshTokensByUserId,
   revokeRefreshTokenById,
   revokeRefreshTokenByToken,
 } from "../repositories/refresh-token.repository";
@@ -94,6 +95,7 @@ export async function refresh(refreshToken: string): Promise<AuthResult> {
   }
 
   if (storedToken.revokedAt) {
+    await revokeAllRefreshTokensByUserId(storedToken.userId);
     throw createAppError("Refresh token has been revoked", 401, "AUTH_005");
   }
 

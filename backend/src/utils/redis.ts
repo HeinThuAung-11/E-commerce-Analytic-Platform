@@ -62,3 +62,13 @@ export async function deleteCacheKeys(keys: string[]): Promise<void> {
     console.error("Redis delete failed", error);
   }
 }
+
+export async function checkRedisHealth(): Promise<boolean> {
+  try {
+    await ensureRedisConnection();
+    const pong = await redis.ping();
+    return pong === "PONG";
+  } catch {
+    return false;
+  }
+}

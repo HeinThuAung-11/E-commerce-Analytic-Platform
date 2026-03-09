@@ -2,6 +2,7 @@ import "dotenv/config";
 import { z } from "zod";
 
 const envSchema = z.object({
+  APP_ENV: z.enum(["local", "staging", "production"]).default("local"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
@@ -22,6 +23,7 @@ if (!parsed.success) {
 }
 
 export const env = {
+  appEnv: parsed.data.APP_ENV,
   nodeEnv: parsed.data.NODE_ENV,
   port: parsed.data.PORT,
   frontendUrl: parsed.data.FRONTEND_URL,

@@ -34,8 +34,7 @@ function isNotFoundError(reason: unknown): boolean {
   return maybeResponse?.status === 404;
 }
 
-export function useDashboardData() {
-  const [selectedRange, setSelectedRange] = useState<RevenueRange>("30d");
+export function useDashboardData(selectedRange: RevenueRange) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
@@ -213,8 +212,6 @@ export function useDashboardData() {
   }, [selectedRange]);
 
   return {
-    selectedRange,
-    setSelectedRange,
     isLoading,
     errorMessage,
     overview,

@@ -89,6 +89,19 @@ export const openApiSpec = {
         },
       },
     },
+    "/health/readiness": {
+      get: {
+        summary: "Readiness check (database + redis)",
+        responses: {
+          "200": {
+            description: "Service dependencies are ready",
+          },
+          "503": {
+            description: "Service dependencies are not ready",
+          },
+        },
+      },
+    },
     "/auth/register": {
       post: {
         summary: "Register new user",

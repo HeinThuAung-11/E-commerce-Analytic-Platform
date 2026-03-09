@@ -67,3 +67,17 @@ export async function rotateRefreshToken(
 
   return createdToken;
 }
+
+export async function revokeAllRefreshTokensByUserId(userId: string): Promise<number> {
+  const result = await prisma.refreshToken.updateMany({
+    where: {
+      userId,
+      revokedAt: null,
+    },
+    data: {
+      revokedAt: new Date(),
+    },
+  });
+
+  return result.count;
+}
