@@ -1,16 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
+import { env } from "../config/env";
 import { login } from "../features/auth/auth.service";
 import { useAuth } from "../features/auth/auth-context";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, setAuthenticatedSession } = useAuth();
+  const { isAuthenticated, isLoading, setAuthenticatedSession, enableDemoSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (env.demoMode && !isAuthenticated) {
+      enableDemoSession();
+      navigate("/dashboard", { replace: true });
+    }
+  }, [enableDemoSession, isAuthenticated, navigate]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,6 +39,11 @@ export function LoginPage() {
     }
   }
 
+  function handleDemo(): void {
+    enableDemoSession();
+    navigate("/dashboard");
+  }
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -49,6 +62,11 @@ export function LoginPage() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <section className="mx-auto flex max-w-md flex-col gap-6 px-6 py-20">
         <h1 className="text-3xl font-semibold tracking-tight">Sign In</h1>
+        {env.demoMode ? (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            Demo mode is enabled. You can explore the dashboard with sample data.
+          </div>
+        ) : null}
         <p className="text-sm text-slate-400">
           Login to view your e-commerce analytics dashboard.
         </p>
@@ -89,6 +107,15 @@ export function LoginPage() {
             {isSubmitting ? "Signing In..." : "Sign In"}
           </button>
         </form>
+        {env.demoMode ? (
+          <button
+            type="button"
+            onClick={handleDemo}
+            className="w-full rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500"
+          >
+            Continue as Demo
+          </button>
+        ) : null}
       </section>
     </main>
   );

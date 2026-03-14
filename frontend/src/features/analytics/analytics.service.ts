@@ -1,75 +1,44 @@
+import { env } from "../../config/env";
 import { apiClient } from "../../services/http";
+import {
+  getDemoCategoryDistribution,
+  getDemoOrderStatusMix,
+  getDemoOrderTrend,
+  getDemoOrders,
+  getDemoOverview,
+  getDemoProducts,
+  getDemoRevenue,
+  getDemoRevenueByStatus,
+  getDemoTopProducts,
+} from "./demo-data";
+import type {
+  CategoryDistributionPoint,
+  OrderItem,
+  OrderStatusMixPoint,
+  OrderTrendPoint,
+  OrdersResponse,
+  OverviewResponse,
+  ProductItem,
+  ProductsResponse,
+  RevenueByStatusPoint,
+  RevenueRange,
+  RevenueResponse,
+  TopProduct,
+} from "./analytics.types";
 
-export type OverviewResponse = {
-  totalRevenue: string;
-  totalOrders: number;
-  completedOrders: number;
-  totalCustomers: number;
-  totalProductsSold: number;
-};
-
-export type RevenueRange = "7d" | "30d" | "90d";
-
-export type RevenueResponse = {
-  range: RevenueRange;
-  revenue: string;
-  startDate: string;
-};
-
-export type TopProduct = {
-  productId: string;
-  productName: string;
-  category: string;
-  totalQuantity: number;
-  totalRevenue: string;
-};
-
-export type OrderStatusMixPoint = {
-  status: string;
-  count: number;
-};
-
-export type OrderItem = {
-  id: string;
-  status: string;
-  totalAmount: string;
-  createdAt: string;
-  customer: {
-    id: string;
-    name: string;
-    email: string;
-  };
-};
-
-export type OrdersResponse = {
-  items: OrderItem[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-};
-
-export type ProductItem = {
-  id: string;
-  name: string;
-  sku: string;
-  category: string;
-  price: string;
-  stock: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ProductsResponse = {
-  items: ProductItem[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+export type {
+  CategoryDistributionPoint,
+  OrderItem,
+  OrderStatusMixPoint,
+  OrderTrendPoint,
+  OrdersResponse,
+  OverviewResponse,
+  ProductItem,
+  ProductsResponse,
+  RevenueByStatusPoint,
+  RevenueRange,
+  RevenueResponse,
+  TopProduct,
 };
 
 function isProductItem(value: unknown): value is ProductItem {
@@ -134,33 +103,23 @@ function normalizeProductsResponse(data: unknown): ProductsResponse {
   };
 }
 
-export type OrderTrendPoint = {
-  date: string;
-  orderCount: number;
-};
-
-export type RevenueByStatusPoint = {
-  status: string;
-  revenue: string;
-  orders: number;
-};
-
-export type CategoryDistributionPoint = {
-  category: string;
-  count: number;
-};
-
 type ApiEnvelope<T> = {
   success: boolean;
   data: T;
 };
 
 export async function getOverview(): Promise<OverviewResponse> {
+  if (env.demoMode) {
+    return getDemoOverview();
+  }
   const response = await apiClient.get<ApiEnvelope<OverviewResponse>>("/analytics/overview");
   return response.data.data;
 }
 
 export async function getRevenue(range: RevenueRange): Promise<RevenueResponse> {
+  if (env.demoMode) {
+    return getDemoRevenue(range);
+  }
   const response = await apiClient.get<ApiEnvelope<RevenueResponse>>("/analytics/revenue", {
     params: {
       range,
@@ -170,6 +129,9 @@ export async function getRevenue(range: RevenueRange): Promise<RevenueResponse> 
 }
 
 export async function getTopProducts(range: RevenueRange): Promise<TopProduct[]> {
+  if (env.demoMode) {
+    return getDemoTopProducts(range);
+  }
   const response = await apiClient.get<ApiEnvelope<TopProduct[]>>("/analytics/top-products", {
     params: {
       range,
@@ -183,6 +145,9 @@ export async function getOrders(
   limit: number,
   range?: RevenueRange,
 ): Promise<OrdersResponse> {
+  if (env.demoMode) {
+    return getDemoOrders(range ?? "30d");
+  }
   const response = await apiClient.get<ApiEnvelope<OrdersResponse>>("/orders", {
     params: {
       page,
@@ -194,6 +159,9 @@ export async function getOrders(
 }
 
 export async function getProducts(page: number, limit: number): Promise<ProductsResponse> {
+  if (env.demoMode) {
+    return getDemoProducts();
+  }
   const response = await apiClient.get<ApiEnvelope<unknown>>("/products", {
     params: {
       page,
@@ -204,6 +172,9 @@ export async function getProducts(page: number, limit: number): Promise<Products
 }
 
 export async function getOrderTrend(range: RevenueRange): Promise<OrderTrendPoint[]> {
+  if (env.demoMode) {
+    return getDemoOrderTrend(range);
+  }
   const response = await apiClient.get<ApiEnvelope<OrderTrendPoint[]>>("/analytics/order-trend", {
     params: {
       range,
@@ -213,6 +184,9 @@ export async function getOrderTrend(range: RevenueRange): Promise<OrderTrendPoin
 }
 
 export async function getRevenueByStatus(range: RevenueRange): Promise<RevenueByStatusPoint[]> {
+  if (env.demoMode) {
+    return getDemoRevenueByStatus(range);
+  }
   const response = await apiClient.get<ApiEnvelope<RevenueByStatusPoint[]>>(
     "/analytics/revenue-by-status",
     {
@@ -225,6 +199,9 @@ export async function getRevenueByStatus(range: RevenueRange): Promise<RevenueBy
 }
 
 export async function getCategoryDistribution(range: RevenueRange): Promise<CategoryDistributionPoint[]> {
+  if (env.demoMode) {
+    return getDemoCategoryDistribution(range);
+  }
   const response = await apiClient.get<ApiEnvelope<CategoryDistributionPoint[]>>(
     "/analytics/category-distribution",
     {
@@ -237,6 +214,9 @@ export async function getCategoryDistribution(range: RevenueRange): Promise<Cate
 }
 
 export async function getOrderStatusMix(range: RevenueRange): Promise<OrderStatusMixPoint[]> {
+  if (env.demoMode) {
+    return getDemoOrderStatusMix(range);
+  }
   const response = await apiClient.get<ApiEnvelope<OrderStatusMixPoint[]>>(
     "/analytics/order-status-mix",
     {

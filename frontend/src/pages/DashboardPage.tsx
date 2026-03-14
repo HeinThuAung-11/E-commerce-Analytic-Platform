@@ -18,6 +18,7 @@ import { formatCurrency, formatDateTime } from "../features/analytics/formatters
 import { useAuth } from "../features/auth/auth-context";
 import { downloadCsv } from "../utils/csv";
 import type { RevenueRange } from "../features/analytics/analytics.service";
+import { env } from "../config/env";
 
 function parseRange(value: string | null): RevenueRange {
   if (value === "7d" || value === "90d") {
@@ -145,6 +146,7 @@ export function DashboardPage() {
           onLogout={handleLogout}
           isLoggingOut={isLoggingOut}
           lastUpdatedAt={lastUpdatedAt ? formatDateTime(lastUpdatedAt) : null}
+          isDemoMode={env.demoMode}
         />
         <RevenueRangeSelector
           ranges={revenueRanges}
@@ -239,6 +241,16 @@ export function DashboardPage() {
           />
           <ProductsListPanel products={filteredProducts} isLoading={isLoading} />
         </div>
+
+        {env.demoMode ? (
+          <p className="mt-10 text-center text-xs text-slate-500">
+            Demo data shown for presentation purposes.
+          </p>
+        ) : (
+          <p className="mt-10 text-center text-xs text-slate-500">
+            Live mode is enabled. Metrics reflect real-time platform activity.
+          </p>
+        )}
       </section>
     </main>
   );

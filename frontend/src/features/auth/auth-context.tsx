@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
+import { env } from "../../config/env";
 import { apiClient } from "../../services/http";
 import { setUnauthorizedHandler } from "../../services/http";
 import { clearAccessToken, getAccessToken, setAccessToken } from "./token-store";
@@ -18,6 +19,7 @@ type AuthContextValue = {
   isLoading: boolean;
   setAuthenticatedSession: (user: AuthUser, accessToken: string) => void;
   clearSession: () => void;
+  enableDemoSession: () => void;
   logout: () => Promise<void>;
 };
 
@@ -32,6 +34,13 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 type AuthProviderProps = {
   children: JSX.Element;
+};
+
+const demoUser: AuthUser = {
+  id: "demo-user",
+  name: "Demo Analyst",
+  email: "demo@ecommerce-analytics.com",
+  role: "ANALYST",
 };
 
 export function AuthProvider({ children }: AuthProviderProps) {
@@ -58,6 +67,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     async function restoreSession(): Promise<void> {
+      if (env.demoMode) {
+        setUser(demoUser);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const response = await apiClient.post<AuthEnvelope>("/auth/refresh", {});
         const nextToken = response.data.data.accessToken;
@@ -80,7 +95,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(nextUser);
   }
 
+  function enableDemoSession(): void {
+    setUser(demoUser);
+  }
+
   async function logout(): Promise<void> {
+    if (env.demoMode) {
+      clearSession();
+      return;
+    }
+
     await logoutRequest();
     clearSession();
   }
@@ -91,6 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     setAuthenticatedSession,
     clearSession,
+    enableDemoSession,
     logout,
   };
 
